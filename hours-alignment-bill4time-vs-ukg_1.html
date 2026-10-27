@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hours Alignment — Bill4Time vs UKG</title>
+<style>
+:root{
+  --navy:#1f3a6e; --navy2:#2b5a96; --pale:#c9d6e8; --bg:#e8edf3; --line:#d5dbe4;
+  --ink:#1f2937; --mute:#6b7280; --green:#166534; --red:#b42318; --amber:#f59e0b;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);font:13px/1.45 "Segoe UI",Arial,sans-serif;color:var(--ink);padding:14px}
+.page{max-width:800px;margin:0 auto}
+section,.blk{scroll-margin-top:96px}
+
+/* ---------- sticky task bar (new) ---------- */
+.task{position:sticky;top:8px;z-index:30;background:#fff;border:1px solid #9fb2cf;border-left:5px solid var(--navy2);border-radius:6px;box-shadow:0 4px 14px rgba(31,58,110,.18);padding:9px 12px;margin-bottom:12px}
+.task.done{border-left-color:#2e9b4a}
+.t-row{display:flex;gap:10px;align-items:center}
+.t-num{width:26px;height:26px;border-radius:50%;background:var(--navy2);color:#fff;display:grid;place-items:center;font-weight:700;font-size:13px;flex:none}
+.task.done .t-num{background:#2e9b4a}
+.t-txt{flex:1;min-width:0}
+.t-lbl{font-size:10px;font-weight:700;letter-spacing:.09em;color:var(--navy2)}
+.t-main{font-size:13.5px;font-weight:600;color:#10264d}
+.t-btns{display:flex;gap:6px;flex:none}
+.t-btns button{font:600 11.5px "Segoe UI",Arial;padding:5px 10px;border:1px solid #b8c4d8;background:#fff;color:var(--navy2);border-radius:4px;cursor:pointer}
+.t-btns button:hover{background:#eef4ff}
+.t-btns button.go{background:var(--navy2);color:#fff;border-color:var(--navy)}
+.t-msg{display:none;margin-top:7px;padding:6px 9px;border-radius:4px;font-size:12px}
+.t-msg.show{display:block}
+.t-msg.hint{background:#eef4ff;border:1px solid #9db8e6;color:#1e3a8a}
+.t-msg.no{background:#fff1f1;border:1px solid #e3a3a3;color:#7f1d1d}
+.t-msg.ok{background:#e6f6e8;border:1px solid #7fc58a;color:#14532d}
+.chips{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.chip{font-size:11px;padding:2px 9px;border-radius:12px;background:#eef1f6;color:#6b7280;border:1px solid #d5dbe4;font-weight:600}
+.chip.cur{background:#e0ebfb;color:var(--navy2);border-color:#9db8e6}
+.chip.ok{background:#e6f6e8;color:var(--green);border-color:#7fc58a}
+.skip{font-size:11px;color:var(--mute);text-decoration:underline;cursor:pointer;margin-left:auto;background:none;border:0;padding:0}
+
+/* ---------- header ---------- */
+.hdr{background:var(--navy);color:#fff;border-radius:6px 6px 0 0;padding:12px 16px}
+.hdr h1{margin:0;font-size:16px}
+.hdr p{margin:2px 0 0;font-size:12px;opacity:.85}
+.intro{background:var(--pale);padding:10px 16px;border-radius:0 0 6px 6px;border:1px solid #b6c6de;border-top:0;font-size:12.5px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);background:#fff;border:1px solid var(--line);border-radius:6px;margin:12px 0;box-shadow:0 1px 2px rgba(0,0,0,.05)}
+.stats>div{padding:11px 14px;border-left:1px solid var(--line)}
+.stats>div:first-child{border-left:0}
+.stats small{display:block;font-size:10px;letter-spacing:.07em;font-weight:700;color:#7b8494;text-transform:uppercase}
+.stats b{display:block;font-size:15px;margin:2px 0}
+.stats em{font-style:normal;font-size:10.5px;color:#8a919d}
+.g{color:var(--green)} .r{color:var(--red)}
+@media(max-width:620px){.stats{grid-template-columns:1fr 1fr}.stats>div:nth-child(3){border-left:0}}
+.scn{display:flex;gap:10px;background:#eef2fb;border:1px solid #c9d6ee;border-radius:6px;padding:10px 14px;margin-bottom:14px}
+.scn svg{flex:none;margin-top:2px}
+
+/* ---------- section label ---------- */
+.lbl{display:flex;align-items:center;gap:10px;margin:8px 0 6px}
+.lbl .tag{background:var(--navy);color:#fff;font-weight:700;font-size:11px;border-radius:5px;padding:3px 10px;white-space:nowrap}
+.lbl .rule{flex:1;height:1px;background:#b9c4d6}
+.lbl i{font-size:11px;color:#8b94a3}
+.sec{transition:opacity .4s,filter .4s}
+.sec.locked{opacity:.38;filter:grayscale(.5);pointer-events:none;user-select:none}
+.sec.locked .tag::after{content:"  🔒";}
+
+/* ---------- table cards ---------- */
+.tcard{background:#fff;border:1px solid #9fb2cf;border-radius:6px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.thead{background:var(--navy);color:#fff;font-weight:700;font-size:11.5px;letter-spacing:.04em;padding:8px 12px}
+.thead.ukg{background:var(--navy2);font-size:13px;display:flex;justify-content:space-between}
+.tabs{display:flex;gap:2px;padding:6px 8px 0;border-bottom:1px solid var(--line);font-size:12px;background:#f7f9fc}
+.tab{padding:5px 10px;border:0;background:transparent;border-radius:4px 4px 0 0;cursor:pointer;color:#475569;font:inherit}
+.tab .n{display:inline-block;background:#d5dbe4;color:#334;border-radius:9px;font-size:10px;font-weight:700;padding:0 6px;margin-left:3px}
+.tab.on{background:#1c64d0;color:#fff;font-weight:600}
+.tab.on .n{background:#fff;color:#1c64d0}
+table{border-collapse:collapse;width:100%}
+th{font-size:11px;color:#475569;font-weight:600;text-align:center;padding:7px 8px;border-bottom:1px solid var(--line);background:#fafbfd}
+td{padding:8px 8px;font-size:12px;border-bottom:1px solid #edf0f5;text-align:center}
+.l{text-align:left}
+.b4 td.l,.b4 th.l{text-align:left}
+.b4 tr.entry:hover td{background:#f5f8fe}
+.b4 .tot td{background:#f2f4f7;font-weight:700;font-size:12px}
+.b4 .tot.wk td{background:#e9ecf1}
+.b4 td.n{font-weight:600}
+.b4 td.l:first-child{white-space:nowrap}
+.b4 tr.entry,.b4 tr.tot{cursor:pointer}
+.callout{background:var(--navy);color:#fff;padding:11px 14px;font-size:12.5px;display:none;gap:10px;align-items:flex-start}
+.callout.u{background:var(--navy2)}
+.callout.show{display:flex;animation:slide .45s ease}
+.callout .ic{width:18px;height:18px;border:2px solid #fff;border-radius:50%;flex:none;display:grid;place-items:center;font-size:11px;font-weight:700;margin-top:1px}
+@keyframes slide{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+
+.bridge{display:flex;flex-direction:column;align-items:center;margin:2px 0}
+.bridge i{width:2px;height:16px;background:var(--navy2)}
+.bridge span{background:var(--navy);color:#fff;font-weight:700;font-size:11.5px;border-radius:14px;padding:5px 16px}
+
+/* UKG */
+.ukg-t td{font-size:12px}
+.ukg-t tr.mute td{color:#aab0bb;background:#fafbfc}
+.ukg-t tr.fut td{color:#b7bcc6}
+.ukg-t td.d,.ukg-t th.d{background:#d6e4f7}
+.ukg-t th.d{color:var(--navy);font-weight:700}
+.ukg-t tr.mute td.d,.ukg-t tr.fut td.d{background:#f2f6fc}
+.ukg-t tr.today td{background:#e8f0fc;font-weight:600}
+.ukg-t tr.today td.d{background:var(--navy);color:#fff;font-weight:700;font-size:13px}
+.ukg-t tr.live td.d{cursor:pointer}
+.today-pill{display:inline-block;background:var(--navy);color:#fff;font-size:9px;font-weight:700;border-radius:9px;padding:1px 7px;margin-left:5px;vertical-align:1px}
+.ukg-t td.d,.ukg-t td.per{transition:background .15s}
+.ukg-t.pick tr:not(.mute):hover td.d{background:#c6dbf6}
+.ukg-t.pick tr.today:hover td.d{background:#16305f}
+
+/* compare */
+.cmp{background:#fff;border:1px solid #9fb2cf;border-radius:6px;overflow:hidden}
+.cmp-h{background:var(--navy);color:#fff;font-weight:700;font-size:12.5px;padding:8px 14px}
+.cmp-b{display:grid;grid-template-columns:1fr 1fr 1.15fr 1.25fr}
+@media(max-width:700px){.cmp-b{grid-template-columns:1fr 1fr}}
+.cmp-b>div{padding:16px 12px;border-left:1px solid var(--line);text-align:center}
+.cmp-b>div:first-child{border-left:0}
+.big{font-size:30px;font-weight:700;color:var(--navy);line-height:1.1}
+.cmp-b small{display:block;color:#7b8494;font-size:10px;letter-spacing:.06em;font-weight:700;margin-top:3px}
+.cmp-b span.s{display:block;font-size:11.5px;color:#4b5563;margin-top:2px}
+.gapv{color:#7a808c}
+.why{text-align:left!important;font-size:12px;background:#fff}
+.why b{display:block;margin-bottom:3px;font-size:12.5px}
+.badge{display:inline-block;margin-top:7px;background:#e6f6e8;border:1px solid #7fc58a;color:var(--green);font-weight:600;font-size:11.5px;border-radius:4px;padding:3px 10px}
+.gapin{display:flex;gap:5px;justify-content:center;align-items:center;margin-top:4px}
+.gapin input{width:78px;font:700 18px "Segoe UI",Arial;text-align:center;border:2px solid var(--amber);border-radius:5px;padding:4px;animation:pulse 1.3s ease-in-out infinite}
+.gapin input:focus{outline:none;border-color:var(--navy2);animation:none}
+.gapin button{font:600 12px "Segoe UI",Arial;background:var(--navy2);color:#fff;border:0;border-radius:4px;padding:7px 10px;cursor:pointer}
+.eq{font-size:11px;color:#6b7280;margin-top:6px}
+.warn{display:none;gap:10px;background:#fff7ed;border:1px solid #f0b36a;border-radius:6px;padding:11px 14px;margin-top:14px;font-size:12.5px}
+.warn.show{display:flex;animation:slide .45s ease}
+.dim{opacity:.3;transition:opacity .4s}
+
+/* knowledge check (new) */
+.kc{background:#fff;border:1px solid #9fb2cf;border-radius:6px;overflow:hidden;margin-top:14px}
+.kc-h{background:var(--navy);color:#fff;font-weight:700;font-size:12.5px;padding:8px 14px}
+.q{padding:12px 14px;border-bottom:1px solid var(--line)}
+.q:last-of-type{border-bottom:0}
+.q p{margin:0 0 8px;font-size:12.5px}
+.q .mini{display:flex;gap:18px;margin-bottom:9px}
+.q .mini div{background:#f1f5fb;border:1px solid #d5dfef;border-radius:5px;padding:5px 12px;text-align:center}
+.q .mini b{display:block;font-size:16px;color:var(--navy)}
+.q .mini small{font-size:10px;color:#6b7280;font-weight:700;letter-spacing:.06em}
+.q .ans{display:flex;gap:8px}
+.q .ans button{flex:1;max-width:210px;font:600 12px "Segoe UI",Arial;padding:7px 10px;border:1px solid #b8c4d8;background:#fff;border-radius:5px;cursor:pointer;color:#10264d}
+.q .ans button:hover{background:#eef4ff}
+.q .ans button.right{background:#e6f6e8;border-color:#3a9a4a;color:var(--green)}
+.q .ans button.wrong{background:#fff1f1;border-color:#c9363e;color:#8e1b1b}
+.q .fbk{display:none;margin-top:8px;font-size:12px;padding:6px 9px;border-radius:4px}
+.q .fbk.show{display:block}
+.q .fbk.ok{background:#e6f6e8;color:#14532d}
+.q .fbk.no{background:#fff1f1;color:#7f1d1d}
+.final{display:none;padding:14px;text-align:center;background:#e6f6e8;border-top:1px solid #7fc58a}
+.final.show{display:block}
+.final b{color:var(--green);font-size:15px}
+.final button{margin-top:8px;font:600 12px "Segoe UI",Arial;padding:6px 14px;border:1px solid #b8c4d8;background:#fff;border-radius:5px;cursor:pointer}
+
+/* pulse targets */
+.pulse{animation:pulse 1.3s ease-in-out infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 2px rgba(245,158,11,.95),0 0 0 0 rgba(245,158,11,0)}50%{box-shadow:0 0 0 2px rgba(245,158,11,1),0 0 0 7px rgba(245,158,11,.3)}}
+tr.pulse-row td{background:#fff3d6!important}
+tr.pulse-row{animation:none}
+td.pulse-cell{outline:3px solid var(--amber);outline-offset:-3px;animation:pc 1.3s ease-in-out infinite}
+@keyframes pc{50%{outline-color:rgba(245,158,11,.35)}}
+tr.found td{background:#e6f6e8!important;color:#14532d!important}
+tr.found td.d{background:#2e9b4a!important;color:#fff!important}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}}
+
+/* more pronounced instructions */
+.intro{padding:14px 18px 14px;font-size:14px;border-left:6px solid #1c64d0}
+.intro p{margin:0 0 10px;font-size:14px;line-height:1.5}
+.how{font-size:11px;font-weight:800;letter-spacing:.12em;color:var(--navy2);margin-bottom:5px}
+.callme{display:flex;gap:10px;align-items:flex-start;background:#fff;border:2px solid #1c64d0;border-radius:8px;padding:10px 14px;font-size:14px;color:#10264d;box-shadow:0 2px 8px rgba(28,100,208,.18)}
+.callme .arrow{font-size:20px;line-height:1.2}
+.callme .glow{padding:0 6px;border-radius:4px;animation:pulse 1.3s ease-in-out infinite;background:#fff7e0;font-weight:700}
+.steps4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}
+.steps4 span{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #9db8e6;border-radius:6px;padding:7px 9px;font-size:12px;font-weight:600;color:#10264d}
+.steps4 i{width:22px;height:22px;border-radius:50%;background:var(--navy2);color:#fff;font-style:normal;display:grid;place-items:center;font-size:12px;font-weight:700;flex:none}
+@media(max-width:620px){.steps4{grid-template-columns:1fr 1fr}}
+.scn{background:#fff8e1;border:1px solid #f0d77a;border-left:6px solid var(--amber);font-size:14px;line-height:1.5;padding:12px 16px;align-items:flex-start}
+.scn svg{margin-top:14px}
+.scn-l{font-size:11px;font-weight:800;letter-spacing:.12em;color:#b45309;margin-bottom:3px}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- sticky task bar -->
+  <div class="task" id="task" role="region" aria-label="Your task">
+    <div class="t-row">
+      <div class="t-num" id="tNum">1</div>
+      <div class="t-txt"><div class="t-lbl" id="tLbl">YOUR TASK</div><div class="t-main" id="tMain"></div></div>
+      <div class="t-btns"><button id="bHint" type="button">💡 Hint</button><button id="bShow" type="button">Show me</button><button id="bGo" class="go" type="button" style="display:none">Continue ↓</button></div>
+    </div>
+    <div class="t-msg" id="tMsg" role="status" aria-live="polite"></div>
+    <div class="chips" id="chips"></div>
+  </div>
+
+  <!-- header -->
+  <div class="hdr"><h1>Hours Alignment — Bill4Time vs UKG</h1><p>Understanding how your two systems should match up at the end of each day</p></div>
+  <div class="intro">
+    <div class="how">HOW THIS WORKS</div>
+    <p>Both Bill4Time and UKG record your time — but they track <b>different things</b>. This page shows you what to look for, what the numbers mean, and what a healthy alignment looks like.</p>
+    <div class="callme"><span class="arrow">👉</span> <span><b>Your job: complete the 4 short tasks as you scroll.</b> The task bar at the top tells you what to do next — the <span class="glow">glowing</span> areas show you where to click.</span></div>
+    <div class="steps4">
+      <span><i>1</i>Find your Bill4Time total</span><span><i>2</i>Find your UKG hours</span><span><i>3</i>Work out the gap</span><span><i>4</i>Check yourself</span>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div><small>Daily Target</small><b>~8 hours</b><em>Minimum: 7.5 hrs</em></div>
+    <div><small>Weekly Target</small><b>~40 hours</b><em>Minimum: 38 hrs</em></div>
+    <div><small>Small Gaps</small><b class="g">Expected ✓</b><em>Billing increments cause slight rounding</em></div>
+    <div><small>Large Gaps</small><b class="r">Require review</b><em>Check for missing entries</em></div>
+  </div>
+
+  <div class="scn">
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#2b5a96" stroke-width="2"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>
+    <div><div class="scn-l">THE SCENARIO</div><b>Tuesday, September 22:</b> You worked a full day (<b>9:00 AM – 5:00 PM</b>) and logged billable time throughout the day in Bill4Time. Here is how the two systems look at end of day — and how to read them together.</div>
+  </div>
+
+  <!-- 1. BILL4TIME -->
+  <section class="sec" id="s1" data-stage="1">
+    <div class="lbl"><span class="tag">⓵ BILL4TIME</span><span class="rule"></span><i>What did I bill today?</i></div>
+    <div class="tcard">
+      <div class="thead">BILL4TIME — TIME &amp; EXPENSES</div>
+      <div class="tabs" id="tabs">
+        <button class="tab" type="button">All Week <span class="n">5</span></button>
+        <button class="tab" type="button">Sun (9/21) <span class="n">0</span></button>
+        <button class="tab on" type="button">Tue (9/22) <span class="n">5</span></button>
+        <button class="tab" type="button">Wed (9/23) <span class="n">0</span></button>
+        <button class="tab" type="button">Thu (9/24) <span class="n">0</span></button>
+        <button class="tab" type="button">Fri (9/25) <span class="n">0</span></button>
+        <button class="tab" type="button">Sat (9/26) <span class="n">0</span></button>
+      </div>
+      <table class="b4" id="t1">
+        <thead><tr><th class="l">Date ↕</th><th class="l">Client ↕</th><th class="l">Matter ↕</th><th class="l">Private Description ↕</th><th>Cost ↕</th><th>Labor (hrs) ↕</th><th>Billable (hrs)</th><th>Total (hrs) ↕</th></tr></thead>
+        <tbody>
+          <tr class="entry"><td class="l">⏱ 09/22/2026</td><td class="l">SLS Operations</td><td class="l">Electrostim SLS Ops</td><td class="l">Medical Records Request/Follow Up</td><td>-</td><td class="n">2.50</td><td class="n">2.50</td><td class="n">2.50</td></tr>
+          <tr class="entry"><td class="l">⏱ 09/22/2026</td><td class="l">Hernandez, Maria</td><td class="l">Electrostim SLS Ops</td><td class="l">Client Intake Interview &amp; Notes</td><td>-</td><td class="n">1.00</td><td class="n">1.00</td><td class="n">1.00</td></tr>
+          <tr class="entry"><td class="l">⏱ 09/22/2026</td><td class="l">Patel, Rajesh</td><td class="l">Electrostim SLS Ops</td><td class="l">Draft Demand Letter – Review &amp; Revisions</td><td>-</td><td class="n">1.75</td><td class="n">1.75</td><td class="n">1.75</td></tr>
+          <tr class="entry"><td class="l">⏱ 09/22/2026</td><td class="l">SLS Operations</td><td class="l">Electrostim SLS Ops</td><td class="l">Court Filing Preparation</td><td>-</td><td class="n">0.75</td><td class="n">0.75</td><td class="n">0.75</td></tr>
+          <tr class="entry"><td class="l">⏱ 09/22/2026</td><td class="l">Thompson, James</td><td class="l">Electrostim SLS Ops</td><td class="l">Attorney Correspondence / Email Follow-Up</td><td>-</td><td class="n">0.50</td><td class="n">0.50</td><td class="n">0.50</td></tr>
+          <tr class="tot day" id="dayRow"><td class="l" colspan="4">Day Total:</td><td>-</td><td>6.50</td><td>6.50</td><td>6.50</td></tr>
+          <tr class="tot wk" id="weekRow"><td class="l" colspan="4">Week Total:</td><td>-</td><td>6.50</td><td>6.50</td><td>6.50</td></tr>
+        </tbody>
+      </table>
+      <div class="callout" id="c1"><span class="ic">i</span><div><b>Look at the Day Total — 6.50 hrs.</b> This is what Bill4Time recorded for today. It only captures time you actively billed to a client matter. Lunch, short admin tasks, and rounding are not included here.</div></div>
+    </div>
+  </section>
+
+  <div class="bridge"><i></i><span>Now compare this to UKG ↓</span><i></i></div>
+
+  <!-- 2. UKG -->
+  <section class="sec locked" id="s2" data-stage="2">
+    <div class="lbl"><span class="tag">⓶ UKG</span><span class="rule"></span><i>How long was I clocked in today?</i></div>
+    <div class="tcard">
+      <div class="thead ukg"><span>UKG</span><span>✎</span></div>
+      <table class="ukg-t" id="t2">
+        <thead><tr><th class="l" style="text-align:left">Date</th><th>Schedule</th><th>In</th><th>Out</th><th>Pay code</th><th>Amount</th><th class="d">Daily ← look here</th><th>Period</th></tr></thead>
+        <tbody>
+          <tr class="mute"><td class="l">Sun 9/13</td><td></td><td></td><td></td><td></td><td></td><td class="d"></td><td class="per"></td></tr>
+          <tr class="live"><td class="l">Mon 9/14</td><td>9:00 AM – 5:00 PM</td><td>9:02 AM</td><td>5:01 PM</td><td></td><td></td><td class="d">7:59</td><td class="per">7:59</td></tr>
+          <tr class="live"><td class="l">Tue 9/15</td><td>9:00 AM – 5:00 PM</td><td>8:58 AM</td><td>5:00 PM</td><td></td><td></td><td class="d">8:02</td><td class="per">16:01</td></tr>
+          <tr class="live"><td class="l">Wed 9/16</td><td>9:00 AM – 5:00 PM</td><td>9:00 AM</td><td>5:03 PM</td><td></td><td></td><td class="d">8:03</td><td class="per">24:04</td></tr>
+          <tr class="live"><td class="l">Thu 9/17</td><td>9:00 AM – 5:00 PM</td><td>9:01 AM</td><td>5:00 PM</td><td></td><td></td><td class="d">7:59</td><td class="per">32:03</td></tr>
+          <tr class="live"><td class="l">Fri 9/18</td><td>9:00 AM – 5:00 PM</td><td>8:55 AM</td><td>4:58 PM</td><td></td><td></td><td class="d">8:03</td><td class="per">40:06</td></tr>
+          <tr class="mute"><td class="l">Sat 9/19</td><td></td><td></td><td></td><td></td><td></td><td class="d"></td><td class="per">40:06</td></tr>
+          <tr class="mute"><td class="l">Sun 9/20</td><td></td><td></td><td></td><td></td><td></td><td class="d"></td><td class="per">40:06</td></tr>
+          <tr class="live"><td class="l">Mon 9/21</td><td>9:00 AM – 5:00 PM</td><td>9:00 AM</td><td>5:00 PM</td><td></td><td></td><td class="d">8:00</td><td class="per">48:06</td></tr>
+          <tr class="today live" id="todayRow"><td class="l">Tue 9/22 ★ <span class="today-pill">TODAY</span></td><td>9:00 AM – 5:00 PM</td><td>9:00 AM</td><td>5:00 PM</td><td></td><td></td><td class="d" id="todayDaily">8:00 ⊘</td><td class="per">56:00</td></tr>
+          <tr class="fut"><td class="l">Wed 9/23</td><td>9:00 AM – 5:00 PM</td><td></td><td></td><td></td><td></td><td class="d">8:00</td><td class="per">64:00</td></tr>
+          <tr class="fut"><td class="l">Thu 9/24</td><td>9:00 AM – 5:00 PM</td><td></td><td></td><td></td><td></td><td class="d">8:00</td><td class="per">72:00</td></tr>
+          <tr class="fut"><td class="l">Fri 9/25</td><td>9:00 AM – 3:00 PM</td><td></td><td></td><td></td><td></td><td class="d">8:00</td><td class="per">80:00</td></tr>
+          <tr class="mute"><td class="l">Sat 9/26</td><td></td><td></td><td></td><td></td><td></td><td class="d"></td><td class="per">80:00</td></tr>
+        </tbody>
+      </table>
+      <div class="callout u" id="c2"><span class="ic">2</span><div><b>Find today's row (Tue 9/22) and look at the Daily column — 8:00 hrs.</b> This is how long you were clocked in today. UKG records your full shift from clock-in to clock-out. This is the number to compare against your Bill4Time total.</div></div>
+    </div>
+  </section>
+
+  <!-- 3. COMPARE -->
+  <section class="sec locked blk" id="s3" data-stage="3" style="margin-top:14px">
+    <div class="cmp">
+      <div class="cmp-h">⊘ How the numbers compare — Tue 9/22</div>
+      <div class="cmp-b">
+        <div><div class="big">6.50</div><small>BILL4TIME</small><span class="s">Billable hours logged</span></div>
+        <div><div class="big">8:00</div><small>UKG</small><span class="s">Hours clocked in</span></div>
+        <div id="gapCell">
+          <div class="gapin" id="gapForm"><input id="gapIn" inputmode="decimal" placeholder="? hrs" aria-label="Gap in hours" autocomplete="off"><button id="gapBtn" type="button">Check</button></div>
+          <div class="eq">Gap = UKG − Bill4Time<br>(8:00 = 8.00 hrs)</div>
+          <div id="gapRes" style="display:none"><div class="big gapv">1.5 hr</div><small>GAP</small><span class="s">Lunch + short admin tasks</span><span class="badge">✓ Acceptable — within range</span></div>
+        </div>
+        <div class="why dim" id="why"><b>Why is there a gap?</b>Bill4Time only captures <i>billable</i> work. Your UKG total includes everything — lunch, brief admin tasks, and billing increment rounding. A gap of 1–2 hours is completely normal and expected.</div>
+      </div>
+    </div>
+    <div class="warn" id="warn"><span>⚠</span><div><b>Large gaps between Bill4Time and UKG require review.</b> If your billable hours are significantly lower than your UKG clock hours and lunch/admin don't account for the difference, check for missing entries, open timers, or unlogged tasks before the end of the day.</div></div>
+  </section>
+
+  <!-- 4. CHECK YOURSELF -->
+  <section class="sec locked blk" id="s4" data-stage="4">
+    <div class="kc">
+      <div class="kc-h">✎ Check yourself — is this gap normal, or does it need review?</div>
+      <div id="qs"></div>
+      <div class="final" id="final"><b>✓ You've got it.</b><div style="margin-top:3px">Small gaps (up to about 2 hours) are normal. Larger gaps that lunch and admin can't explain need a review before end of day.</div><button type="button" id="restart">Start over ↺</button></div>
+    </div>
+  </section>
+</div>
+
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const T=[
+ null,
+ {n:1,main:'Find today’s <b>Day Total</b> in Bill4Time and click it.',hint:'Scroll to the bottom of the Bill4Time table. It is the row labelled “Day Total”.',scroll:'s1'},
+ {n:2,main:'In UKG, click the <b>Daily</b> hours on today’s row (<b>Tue 9/22 — TODAY</b>).',hint:'Use the highlighted Daily column, then find the row with the TODAY tag.',scroll:'s2'},
+ {n:3,main:'Work out the gap: type <b>UKG hours − Bill4Time hours</b>, in hours.',hint:'8:00 means 8.00 hours. So 8.00 − 6.50 = ? Type just the number.',scroll:'s3'},
+ {n:4,main:'Decide for each scenario: <b>Normal</b> or <b>Needs review</b>.',hint:'Gaps up to about 2 hours (lunch, short admin, rounding) are normal. Bigger gaps need a review.',scroll:'s4'}
+];
+let stage=1, hintOn=false, all=false;
+const QS=[
+ {b:'7.50',u:'8:00',g:'0.50',ans:'ok',why:'A 0.5-hour gap is small — it is just rounding and a few minutes of admin. Normal.'},
+ {b:'6.00',u:'8:00',g:'2.00',ans:'ok',why:'A 2-hour gap is at the top of the normal range — lunch plus short admin tasks can explain it. Normal, as long as nothing is missing.'},
+ {b:'3.75',u:'8:00',g:'4.25',ans:'rev',why:'A 4.25-hour gap is far more than lunch and admin explain. Check for missing entries, open timers, or unlogged tasks before end of day.'}
+];
+let qDone=[false,false,false];
+
+function msg(kind,html){const m=$('tMsg'); if(!html){m.className='t-msg';return;} m.className='t-msg show '+kind; m.innerHTML=html;}
+function renderTask(){
+  const t=T[Math.min(stage,4)], fin=stage>4;
+  $('task').classList.toggle('done',fin);
+  $('tNum').textContent=fin?'✓':t.n;
+  $('tLbl').textContent=fin?'ALL DONE':'YOUR TASK — STEP '+t.n+' OF 4';
+  $('tMain').innerHTML=fin?'Nice work — you can read your own Bill4Time and UKG numbers together.':t.main;
+  $('bHint').style.display=$('bShow').style.display=fin?'none':'';
+  $('bGo').style.display='none';
+  hintOn=false;
+  $('chips').innerHTML=['Find Bill4Time total','Find UKG hours','Work out the gap','Check yourself'].map((c,i)=>`<span class="chip ${stage>i+1?'ok':(stage===i+1?'cur':'')}">${stage>i+1?'✓ ':(i+1)+'. '}${c}</span>`).join('')+'<button class="skip" id="skip" type="button">Skip guidance — show everything</button>';
+  $('skip').onclick=showAll;
+  [1,2,3,4].forEach(i=>$('s'+i).classList.toggle('locked',!(all||stage>=i)));
+}
+function advance(to,okMsg){
+  stage=to; renderTask(); msg('ok','✓ '+okMsg);
+  const nxt=T[Math.min(to,4)];
+  if(to<=4){ $('bGo').style.display=''; $('bHint').style.display=$('bShow').style.display='none'; $('bGo').onclick=()=>{ msg(); $('bHint').style.display=$('bShow').style.display=''; $('bGo').style.display='none'; go(nxt.scroll); };
+    setTimeout(()=>{ if(stage===to){ msg(); $('bHint').style.display=$('bShow').style.display=''; $('bGo').style.display='none'; go(nxt.scroll);} },2300); }
+}
+function go(id){ $(id).scrollIntoView({behavior:'smooth',block:'start'}); }
+
+/* hint / show me */
+$('bHint').onclick=()=>{ msg('hint','💡 '+T[stage].hint); };
+$('bShow').onclick=()=>{
+  if(stage===1) done1();
+  else if(stage===2) done2();
+  else if(stage===3){ $('gapIn').value='1.5'; checkGap(); }
+  else { const i=qDone.findIndex(x=>!x); if(i>=0) answer(i,QS[i].ans,true); }
+};
+
+/* step 1 */
+function done1(){
+  if(stage!==1) return;
+  $('dayRow').classList.add('found'); $('dayRow').classList.remove('pulse-row'); $('c1').classList.add('show');
+  advance(2,'Day Total = 6.50 hrs. That is what Bill4Time recorded as billable.');
+}
+$('t1').addEventListener('click',e=>{
+  if(stage!==1) return; const tr=e.target.closest('tr'); if(!tr||!tr.parentNode.matches('tbody')) return;
+  if(tr.id==='dayRow') done1();
+  else if(tr.id==='weekRow') msg('no','That’s the <b>Week Total</b>. It matches today only because nothing else is logged yet. For a daily comparison, use the <b>Day Total</b> just above it.');
+  else msg('no','That’s a single time entry. You need the <b>total of all entries</b> for the day — look at the bottom of the table.');
+});
+$('tabs').addEventListener('click',e=>{ const b=e.target.closest('.tab'); if(!b||b.classList.contains('on')) return; if(stage===1||all) msg('hint','This scenario is about <b>Tue (9/22)</b> — stay on that tab.'); });
+
+/* step 2 */
+function done2(){
+  if(stage!==2) return;
+  const r=$('todayRow'); r.classList.add('found'); $('t2').classList.remove('pick'); $('c2').classList.add('show');
+  advance(3,'UKG Daily = 8:00 hrs. That is your full clocked-in shift.');
+}
+$('t2').addEventListener('click',e=>{
+  if(stage!==2) return; const td=e.target.closest('td'), tr=e.target.closest('tr'); if(!td||!tr||!tr.parentNode.matches('tbody')) return;
+  const isToday=tr.id==='todayRow', daily=td.classList.contains('d');
+  if(isToday&&daily) return done2();
+  if(isToday&&td.classList.contains('per')) return msg('no','<b>Period</b> is a running total for the whole pay period (56:00). You want <b>Daily</b> — hours for today only.');
+  if(isToday) return msg('no','Close — that’s the clock time for today. You need the <b>Daily</b> hours (the highlighted column).');
+  if(tr.classList.contains('fut')) return msg('no','That’s a <b>future</b> day — it shows scheduled hours, not time worked yet. Find today’s row.');
+  if(tr.classList.contains('mute')) return msg('no','No shift on that day. Look for the row tagged <b>TODAY</b>.');
+  msg('no','That’s a <b>different day</b>. Find the row tagged <b>TODAY</b> (Tue 9/22).');
+});
+
+/* step 3 */
+function parseGap(s){ s=s.trim().toLowerCase().replace(/hrs?|hours?/g,'').trim(); let m=s.match(/^(-?\d+(?:\.\d+)?)$/); if(m) return +m[1]; m=s.match(/^(\d+):(\d{2})$/); if(m) return +m[1]+ +m[2]/60; return null; }
+function checkGap(){
+  if(stage!==3&&!all) return; const v=parseGap($('gapIn').value);
+  if(v==null) return msg('no','Type the gap as a number of hours, for example <b>1.5</b>.');
+  if(Math.abs(v-1.5)<0.01){
+    $('gapForm').style.display='none'; document.querySelector('#gapCell .eq').style.display='none'; $('gapRes').style.display='block';
+    $('why').classList.remove('dim'); $('warn').classList.add('show');
+    if(stage===3) advance(4,'Gap = 8.00 − 6.50 = 1.5 hrs — lunch plus short admin tasks. That’s within the normal range.');
+  } else if(Math.abs(v+1.5)<0.01) msg('no','Subtract the smaller number from the larger: <b>UKG − Bill4Time</b>, so the gap is positive.');
+  else if(Math.abs(v-14.5)<0.01||Math.abs(v-14.5)<0.5) msg('no','Don’t add them — you want the <b>difference</b>: 8.00 − 6.50.');
+  else msg('no','Not quite. Convert 8:00 to <b>8.00</b> hours, then subtract Bill4Time’s <b>6.50</b>.');
+}
+$('gapBtn').onclick=checkGap;
+$('gapIn').addEventListener('keydown',e=>{ if(e.key==='Enter') checkGap(); });
+
+/* step 4 */
+function buildQs(){
+  $('qs').innerHTML=QS.map((q,i)=>`<div class="q" id="q${i}"><p><b>Scenario ${String.fromCharCode(65+i)}</b></p>
+   <div class="mini"><div><b>${q.b}</b><small>BILL4TIME</small></div><div><b>${q.u}</b><small>UKG</small></div><div><b>${q.g} hr</b><small>GAP</small></div></div>
+   <div class="ans"><button type="button" data-i="${i}" data-a="ok">✓ Normal — no action</button><button type="button" data-i="${i}" data-a="rev">⚠ Needs review</button></div>
+   <div class="fbk" id="f${i}"></div></div>`).join('');
+  $('qs').querySelectorAll('button').forEach(b=>b.onclick=()=>answer(+b.dataset.i,b.dataset.a,false));
+}
+function answer(i,a,shown){
+  if(qDone[i]) return; const q=QS[i], box=$('q'+i), f=$('f'+i);
+  const btns=box.querySelectorAll('button'); const right=a===q.ans;
+  btns.forEach(b=>{ b.classList.remove('wrong','right'); if(b.dataset.a===a) b.classList.add(right?'right':'wrong'); });
+  f.className='fbk show '+(right?'ok':'no');
+  f.innerHTML=right?('✓ '+q.why):('Not quite — think about whether lunch and short admin tasks could explain a gap this size. Try the other answer.');
+  if(right){ qDone[i]=true; btns.forEach(b=>b.disabled=true); if(qDone.every(Boolean)){ $('final').classList.add('show'); stage=5; renderTask(); msg(); } }
+}
+$('restart').onclick=()=>location.reload();
+
+function showAll(){
+  all=true; stage=Math.max(stage,4);
+  ['c1','c2'].forEach(i=>$(i).classList.add('show')); $('why').classList.remove('dim'); $('warn').classList.add('show');
+  renderTask(); msg('hint','Everything is unlocked. You can still practise the tasks — or just read through the page.');
+}
+
+/* init: pulse targets */
+$('dayRow').classList.add('pulse-row'); $('dayRow').querySelectorAll('td').forEach(td=>td.style.cursor='pointer');
+$('t2').classList.add('pick');
+buildQs(); renderTask();
+/* pulse today's Daily cell only when step 2 is active */
+setInterval(()=>{ $('todayDaily').classList.toggle('pulse-cell',stage===2); $('dayRow').classList.toggle('pulse-row',stage===1); },200);
+})();
+</script>
+</body>
+</html>
